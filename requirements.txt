@@ -1,4 +1,4 @@
-# Bawab Wk Bot — dependencies
+# Nawaab Wk Bot — dependencies
 setuptools>=65.0.0
 wheel
 
@@ -12,6 +12,7 @@ motor
 pymongo
 
 pypdf
+pikepdf
 reportlab
 pillow
 
