@@ -34,7 +34,7 @@ async def start_cmd(client: Client, m: Message):
         return
 
     await m.reply_text(
-        f"👋 Welcome, **{m.from_user.first_name}**🙈🌚!\n\n"
+        f"👋 Welcome, **{m.from_user.first_name}**🌚!\n\n"
         "I'm **Nawaab Watermark Bot** 📄 — send me a PDF and I'll add smart watermarks "
         "to it (page watermark + repeating link watermark + a custom last page).\n\n"
         "Send /wk to get started!"
