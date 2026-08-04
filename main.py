@@ -27,7 +27,7 @@ async def start_cmd(client: Client, m: Message):
 
     if not await is_subscribed(bot, user_id):
         await m.reply_text(
-            "👋 **Welcome to Nawaab Wk Bot!**\n\n"
+            "👋 **Welcome to Nawaab Watermark Bot!**\n\n"
             "Before you start, please join our channel below, then tap **Verify**.",
             reply_markup=force_sub_markup(),
         )
@@ -35,7 +35,7 @@ async def start_cmd(client: Client, m: Message):
 
     await m.reply_text(
         f"👋 Welcome, **{m.from_user.first_name}**!\n\n"
-        "I'm **Nawaab Wk Bot** 📄 — send me a PDF and I'll add smart watermarks "
+        "I'm **Nawaab Watermark Bot** 📄 — send me a PDF and I'll add smart watermarks "
         "to it (page watermark + repeating link watermark + a custom last page).\n\n"
         "Send /wk to get started!"
     )
