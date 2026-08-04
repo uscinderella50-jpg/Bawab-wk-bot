@@ -35,8 +35,8 @@ from reportlab.pdfgen import canvas
 
 from vars import REPEAT_EVERY_N_PAGES
 
-TOP_RIGHT = dict(x_frac=0.80, y_frac=0.85, opacity=0.30, rotation=45, anchor="center")
-DOWN_RIGHT = dict(x_frac=0.96, y_frac=0.04, opacity=0.80, rotation=0, anchor="right")
+TOP_RIGHT = dict(x_frac=0.80, y_frac=0.85, opacity=0.20, rotation=3, anchor="right")
+DOWN_RIGHT = dict(x_frac=0.96, y_frac=0.04, opacity=0.90, rotation=0, anchor="left")
 
 
 def _page_is_image_based(page) -> bool:
