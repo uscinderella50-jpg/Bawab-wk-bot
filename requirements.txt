@@ -1,0 +1,22 @@
+# Bawab Wk Bot — dependencies
+setuptools>=65.0.0
+wheel
+
+pyrogram
+pyrofork
+pyromod==1.5
+TgCrypto==1.2.5
+PySocks==1.7.1
+
+motor
+pymongo
+
+pypdf
+reportlab
+pillow
+
+Flask==2.3.3
+gunicorn==21.2.0
+
+python-dotenv==1.0.0
+requests==2.31.0
