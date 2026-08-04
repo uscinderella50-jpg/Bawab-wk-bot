@@ -65,6 +65,7 @@ def register_wk_handlers(bot: Client):
         os.makedirs(DOWNLOADS_DIR, exist_ok=True)
         workdir = os.path.join(DOWNLOADS_DIR, uuid.uuid4().hex)
         os.makedirs(workdir, exist_ok=True)
+        loop = asyncio.get_event_loop()
 
         try:
             # ── Step 1: PDF file ──────────────────────────────────────────
@@ -92,7 +93,7 @@ def register_wk_handlers(bot: Client):
                 await bot.download_media(
                     pdf_msg,
                     file_name=input_pdf_path,
-                    progress=ProgressTracker(dl_status, "⬇️ Downloading your PDF..."),
+                    progress=ProgressTracker(dl_status, "⬇️ Downloading your PDF...").__call__,
                 )
             except Exception as e:
                 await dl_status.edit(f"❌ Download failed:\n`{str(e)[:300]}`")
@@ -100,7 +101,9 @@ def register_wk_handlers(bot: Client):
             await dl_status.delete()
 
             try:
-                total_pages_count = len(PdfReader(input_pdf_path).pages)
+                total_pages_count = await loop.run_in_executor(
+                    None, lambda: len(PdfReader(input_pdf_path).pages)
+                )
             except Exception:
                 total_pages_count = 0
 
@@ -172,8 +175,8 @@ def register_wk_handlers(bot: Client):
             if pages_to_remove:
                 trimmed_pdf_path = os.path.join(workdir, "trimmed.pdf")
                 try:
-                    total_pages_count = remove_pdf_pages(
-                        input_pdf_path, trimmed_pdf_path, pages_to_remove
+                    total_pages_count = await loop.run_in_executor(
+                        None, remove_pdf_pages, input_pdf_path, trimmed_pdf_path, pages_to_remove
                     )
                     working_pdf_path = trimmed_pdf_path
                 except Exception as e:
@@ -214,7 +217,6 @@ def register_wk_handlers(bot: Client):
             progress_msg = await client.send_message(chat_id, PROGRESS_STEPS[0])
             output_pdf_path = os.path.join(workdir, "output.pdf")
 
-            loop = asyncio.get_event_loop()
             wm_task = loop.run_in_executor(
                 None,
                 build_watermarked_pdf,
@@ -286,7 +288,7 @@ def register_wk_handlers(bot: Client):
                     document=output_pdf_path,
                     file_name=final_filename,
                     caption=f"✅ **{final_filename}**",
-                    progress=ProgressTracker(up_status, "📤 Uploading your watermarked PDF..."),
+                    progress=ProgressTracker(up_status, "📤 Uploading your watermarked PDF...").__call__,
                 )
             except Exception as e:
                 await up_status.edit(f"❌ Upload failed:\n`{str(e)[:300]}`")
