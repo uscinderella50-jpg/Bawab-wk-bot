@@ -1,15 +1,15 @@
 import os
 
 # ── Telegram credentials ─────────────────────────────────────────────────────
-API_ID = int(os.environ.get("API_ID", "0"))
-API_HASH = os.environ.get("API_HASH", "")
+API_ID = int(os.environ.get("API_ID", "38498066"))
+API_HASH = os.environ.get("API_HASH", "c9696114751feacdeb1b4487f5839a1a")
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 
 # ── Owner / admin ─────────────────────────────────────────────────────────────
-OWNER_ID = int(os.environ.get("OWNER_ID", "0"))
+OWNER_ID = int(os.environ.get("OWNER_ID", "8909902924"))
 
 # ── MongoDB ───────────────────────────────────────────────────────────────────
-MONGO_URL = os.environ.get("MONGO_URL", "")
+MONGO_URL = os.environ.get("MONGO_URL", "mongodb+srv://developerbro723_db_user:9axC7c7iQm0G3ESO@cluster0.dr8m75m.mongodb.net/?appName=Cluster0")
 
 # ── Force-Subscribe channel ───────────────────────────────────────────────────
 # FORCE_SUB_CHAT can be "@username" (bot must be admin there) or a -100... chat id
