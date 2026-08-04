@@ -25,6 +25,7 @@ clean (no type 1, no type 2) since the appended image page takes over as
 the document's real "last page".
 """
 
+import concurrent.futures
 import io
 import os
 
@@ -37,6 +38,26 @@ from vars import REPEAT_EVERY_N_PAGES
 
 TOP_RIGHT = dict(x_frac=0.88, y_frac=0.63, opacity=0.11, rotation=0, anchor="right")
 DOWN_RIGHT = dict(x_frac=0.03, y_frac=0.02, opacity=0.95, rotation=0, anchor="left")
+
+# page.extract_text() (pypdf) can hang indefinitely on certain messy/edited
+# real-world PDF pages (this is the freeze users hit — no exception, no log,
+# it just never returns). This dedicated pool lets us bound that call with a
+# hard timeout so one bad page can never stall the whole job.
+_EXTRACT_TEXT_EXECUTOR = concurrent.futures.ThreadPoolExecutor(
+    max_workers=2, thread_name_prefix="wm-extract"
+)
+
+
+def _safe_extract_text(page, timeout: float = 8.0) -> str:
+    future = _EXTRACT_TEXT_EXECUTOR.submit(page.extract_text)
+    try:
+        return future.result(timeout=timeout) or ""
+    except Exception:
+        # Timed out, or extract_text raised — either way treat it as "no
+        # text here" and move on instead of hanging. The stray thread (if
+        # a timeout fired mid-call) is simply abandoned and can no longer
+        # block the caller.
+        return ""
 
 
 def _page_is_image_based(page) -> bool:
@@ -71,7 +92,7 @@ def _page_is_image_based(page) -> bool:
             return True
 
         try:
-            extracted = page.extract_text() or ""
+            extracted = _safe_extract_text(page)
             if len(extracted.strip()) < 20 and len(list(xobjs.keys())) > 0:
                 return True
         except Exception:

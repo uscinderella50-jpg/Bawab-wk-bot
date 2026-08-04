@@ -15,6 +15,7 @@ from vars import TOP_TEXT_MAX_LEN, LINK_TEXT_MAX_LEN, FILENAME_MAX_WORDS
 from watermark import build_watermarked_pdf, remove_pdf_pages
 
 REMOVE_PAGES_MAX = 10
+WATERMARK_TIMEOUT = 600  # seconds — hard ceiling so the final build step can never freeze forever
 
 PROGRESS_STEPS = [
     "Fine,Im attempting thise wait 😁",
@@ -269,7 +270,17 @@ def register_wk_handlers(bot: Client):
             )
 
             step_i = 1
+            deadline = loop.time() + WATERMARK_TIMEOUT
             while not wm_task.done():
+                if loop.time() >= deadline:
+                    wm_task.cancel()
+                    try:
+                        await progress_msg.edit(
+                            "❌ Watermarking took too long and was stopped. Please send /wk again."
+                        )
+                    except Exception:
+                        pass
+                    return
                 await asyncio.sleep(4.5)
                 if step_i < len(PROGRESS_STEPS) - 1:
                     try:
