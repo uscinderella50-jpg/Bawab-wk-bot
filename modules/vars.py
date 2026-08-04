@@ -9,7 +9,7 @@ BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 OWNER_ID = int(os.environ.get("OWNER_ID", "8909902924"))
 
 # ── MongoDB ───────────────────────────────────────────────────────────────────
-MONGO_URL = os.environ.get("MONGO_URL", "mongodb+srv://developerbro723_db_user:9axC7c7iQm0G3ESO@cluster0.dr8m75m.mongodb.net/?appName=Cluster0")
+MONGO_URL = os.environ.get("MONGO_URL", "mongodb+srv://devms786178_db_user:cEtMdLjmHF5EM2Pf@cluster0.xbqyvnn.mongodb.net/?appName=Cluster0")
 
 # ── Force-Subscribe channel ───────────────────────────────────────────────────
 # FORCE_SUB_CHAT can be "@username" (bot must be admin there) or a -100... chat id
