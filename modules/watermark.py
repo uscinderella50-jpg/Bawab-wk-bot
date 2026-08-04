@@ -158,6 +158,27 @@ def _image_to_page(image_path: str, page_w: float, page_h: float):
     return PdfReader(packet).pages[0]
 
 
+def remove_pdf_pages(input_pdf: str, output_pdf: str, pages_to_remove: set) -> int:
+    """
+    Writes a new PDF with the given 1-based page numbers removed.
+    Remaining pages shift up naturally (pypdf keeps insertion order), so
+    e.g. removing page 15 makes the old page 16 become the new page 15.
+    Returns the resulting page count.
+    """
+    reader = PdfReader(input_pdf)
+    writer = PdfWriter()
+
+    for idx, page in enumerate(reader.pages, start=1):
+        if idx in pages_to_remove:
+            continue
+        writer.add_page(page)
+
+    with open(output_pdf, "wb") as f:
+        writer.write(f)
+
+    return len(writer.pages)
+
+
 def build_watermarked_pdf(
     input_pdf: str,
     output_pdf: str,
