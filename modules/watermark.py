@@ -35,8 +35,8 @@ from reportlab.pdfgen import canvas
 
 from vars import REPEAT_EVERY_N_PAGES
 
-TOP_RIGHT = dict(x_frac=0.88, y_frac=0.63, opacity=0.11, rotation=0, anchor="right")
-DOWN_RIGHT = dict(x_frac=0.03, y_frac=0.02, opacity=0.95, rotation=0, anchor="left")
+TOP_RIGHT = dict(x_frac=0.80, y_frac=0.85, opacity=0.30, rotation=45, anchor="center")
+DOWN_RIGHT = dict(x_frac=0.96, y_frac=0.04, opacity=0.80, rotation=0, anchor="right")
 
 
 def _page_is_image_based(page) -> bool:
@@ -160,22 +160,37 @@ def _image_to_page(image_path: str, page_w: float, page_h: float):
 
 def remove_pdf_pages(input_pdf: str, output_pdf: str, pages_to_remove: set) -> int:
     """
-    Writes a new PDF with the given 1-based page numbers removed.
-    Remaining pages shift up naturally, so e.g. removing page 15 makes the
-    old page 16 become the new page 15. Removing the PDF's own last page
-    (the most common case) is fully supported.
+    Removes the given 1-based page numbers from input_pdf, writes the result
+    to output_pdf, and returns the resulting page count. Optimized for the
+    most common real-world case: dropping the PDF's own last page.
 
-    Uses strict=False so real-world PDFs with slightly malformed xref/trailer
-    data (very common in large scanned/course PDFs) still parse correctly
-    instead of failing or hanging, and uses pypdf's native bulk page-index
-    clone (PdfWriter.append with an explicit page list) instead of copying
-    pages one-by-one, which is both faster and far less prone to producing a
-    corrupted output file.
+    PRIMARY ENGINE: pikepdf (built on QPDF, a mature C++ PDF library). This
+    is dramatically faster and far more tolerant of malformed/real-world
+    PDFs (shared fonts, huge embedded images, messy xrefs — all common in
+    scanned/course PDFs) than pure-Python page-by-page cloning, which is
+    what was causing large PDFs to hang indefinitely.
+
+    FALLBACK: pypdf (non-strict, bulk page-index clone) — only used if
+    pikepdf can't open the file for some reason, so this never becomes a
+    hard dependency failure.
     """
+    try:
+        import pikepdf
+
+        with pikepdf.open(input_pdf) as pdf:
+            total = len(pdf.pages)
+            # Delete from highest index to lowest so earlier indices stay valid.
+            for idx in sorted(pages_to_remove, reverse=True):
+                if 1 <= idx <= total:
+                    del pdf.pages[idx - 1]
+            pdf.save(output_pdf)
+            return len(pdf.pages)
+    except Exception as e:
+        print(f"[Watermark] pikepdf page removal failed, falling back to pypdf: {e}")
+
+    # ── Fallback path ──────────────────────────────────────────────────────
     reader = PdfReader(input_pdf, strict=False)
     total = len(reader.pages)
-
-    # 0-based indices to KEEP, in original order.
     keep_indices = [i for i in range(total) if (i + 1) not in pages_to_remove]
 
     writer = PdfWriter()
@@ -192,14 +207,18 @@ def build_watermarked_pdf(
     input_pdf: str,
     output_pdf: str,
     top_text: str,
-    link_text: str,
-    link_url: str,
+    link_text: str | None,
+    link_url: str | None,
     last_page_image: str | None,
     apply_last_page_watermark: bool,
 ) -> int:
     """
     Synchronous — run this inside a thread/executor from async code for big PDFs.
     Returns total number of pages in the produced PDF.
+
+    link_text / link_url may be None (user sent /Skip on those steps) — in
+    that case Type-2 (repeating link watermark) and the optional Type-3 last
+    page watermark are simply not applied, everything else stays unchanged.
     """
     reader = PdfReader(input_pdf)
     writer = PdfWriter()
@@ -214,7 +233,7 @@ def build_watermarked_pdf(
         configs = []
         if not is_last_original_page:
             configs.append({"text": top_text, "url": None, **TOP_RIGHT})
-            if idx % REPEAT_EVERY_N_PAGES == 0:
+            if idx % REPEAT_EVERY_N_PAGES == 0 and link_text:
                 configs.append({"text": link_text, "url": link_url, **DOWN_RIGHT})
 
         if configs:
@@ -228,7 +247,7 @@ def build_watermarked_pdf(
         last_ph = float(reader.pages[-1].mediabox.height)
         img_page = _image_to_page(last_page_image, last_pw, last_ph)
 
-        if apply_last_page_watermark:
+        if apply_last_page_watermark and link_text:
             wm_layer = _watermark_layer(
                 last_pw, last_ph, [{"text": link_text, "url": link_url, **DOWN_RIGHT}], boost=True
             )

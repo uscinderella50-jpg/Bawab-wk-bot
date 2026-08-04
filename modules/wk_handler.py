@@ -116,25 +116,34 @@ def register_wk_handlers(bot: Client):
                 bot, chat_id, user_id,
                 "Alrights 😊 \nNow Send Watermark text(who carries PDF's Every Pages",
             )
+            if top_text.strip().lower() == "/skip":
+                await client.send_message(chat_id, "❌ This field is required and can't be skipped. Send /wk again.")
+                return
             if not top_text or len(top_text) > TOP_TEXT_MAX_LEN:
                 await client.send_message(chat_id, f"❌ Text must be 1-{TOP_TEXT_MAX_LEN} characters. Send /wk again.")
                 return
 
-            # ── Step 3: Type-2/3 redirect text ───────────────────────────
+            # ── Step 3: Type-2/3 redirect text (skippable) ────────────────
             link_text = await _ask_text(
                 bot, chat_id, user_id,
-                "Fantastic 😍 \nNow Send Your redirected Text(who carries PDF's Every 25-50..th Pages",
+                "Fantastic 😍 \nNow Send Your redirected Text(who carries PDF's Every 25-50..th Pages"
+                "\n\n(Send /Skip to skip this — no repeating link watermark will be added)",
             )
-            if not link_text or len(link_text) > LINK_TEXT_MAX_LEN:
+            if link_text.strip().lower() == "/skip":
+                link_text = None
+            elif not link_text or len(link_text) > LINK_TEXT_MAX_LEN:
                 await client.send_message(chat_id, f"❌ Text must be 1-{LINK_TEXT_MAX_LEN} characters. Send /wk again.")
                 return
 
-            # ── Step 4: Redirect URL ──────────────────────────────────────
+            # ── Step 4: Redirect URL (skippable) ───────────────────────────
             link_url = await _ask_text(
                 bot, chat_id, user_id,
-                "Alrights 😊 \nNow send this Text Redirect Link(must be starts with http or https) ",
+                "Alrights 😊 \nNow send this Text Redirect Link(must be starts with http or https) "
+                "\n\n(Send /Skip to skip this — no clickable link will be added)",
             )
-            if not (link_url.startswith("http://") or link_url.startswith("https://")):
+            if link_url.strip().lower() == "/skip":
+                link_url = None
+            elif not (link_url.startswith("http://") or link_url.startswith("https://")):
                 await client.send_message(chat_id, "❌ Invalid link. It must start with http or https. Send /wk again.")
                 return
 
@@ -203,36 +212,45 @@ def register_wk_handlers(bot: Client):
                 except Exception:
                     pass
 
-            # ── Step 5: Last page image ──────────────────────────────────
-            step5 = await client.send_message(chat_id, "Gajjab 🫣\nNow send me last page image (directly send me image)")
+            # ── Step 5: Last page image (skippable) ────────────────────────
+            step5 = await client.send_message(
+                chat_id,
+                "Gajjab 🫣\nNow send me last page image (directly send me image)"
+                "\n\n(Send /Skip to skip this — no extra last page will be added)",
+            )
             _schedule_delete(step5, 13)
             try:
                 img_msg: Message = await bot.listen(
-                    chat_id, filters=filters.photo & filters.user(user_id), timeout=300
+                    chat_id, filters=(filters.photo | filters.text) & filters.user(user_id), timeout=300
                 )
             except asyncio.TimeoutError:
                 await client.send_message(chat_id, "⏰ Timeout! Please send /wk again.")
                 return
             _schedule_delete(img_msg, 5)
 
-            last_img_path = os.path.join(workdir, "last_page.jpg")
-            await bot.download_media(img_msg, file_name=last_img_path)
+            last_img_path = None
+            if img_msg.photo:
+                last_img_path = os.path.join(workdir, "last_page.jpg")
+                await bot.download_media(img_msg, file_name=last_img_path)
+            # any non-photo reply (including /Skip, or anything else) simply skips this step
 
-            # ── Step 6: Yes / Skip on last page watermark ────────────────
-            step6 = await client.send_message(
-                chat_id,
-                "Fine 😁 \nDo you want to use your redirected txt & url on this page So send /Yes Or you can /Skip it anyways",
-            )
-            _schedule_delete(step6, 13)
-            try:
-                choice_msg: Message = await bot.listen(
-                    chat_id, filters=filters.text & filters.user(user_id), timeout=300
+            apply_last_wm = False
+            if last_img_path:
+                # ── Step 6: Yes / Skip on last page watermark (only asked if an image was given) ──
+                step6 = await client.send_message(
+                    chat_id,
+                    "Fine 😁 \nDo you want to use your redirected txt & url on this page So send /Yes Or you can /Skip it anyways",
                 )
-            except asyncio.TimeoutError:
-                await client.send_message(chat_id, "⏰ Timeout! Please send /wk again.")
-                return
-            _schedule_delete(choice_msg, 5)
-            apply_last_wm = (choice_msg.text or "").strip().lower() == "/yes"
+                _schedule_delete(step6, 13)
+                try:
+                    choice_msg: Message = await bot.listen(
+                        chat_id, filters=filters.text & filters.user(user_id), timeout=300
+                    )
+                except asyncio.TimeoutError:
+                    await client.send_message(chat_id, "⏰ Timeout! Please send /wk again.")
+                    return
+                _schedule_delete(choice_msg, 5)
+                apply_last_wm = (choice_msg.text or "").strip().lower() == "/yes"
 
             # ── Processing: apply watermarks with rotating progress text ──
             progress_msg = await client.send_message(chat_id, PROGRESS_STEPS[0])
@@ -276,11 +294,12 @@ def register_wk_handlers(bot: Client):
             except Exception:
                 pass
 
-            # ── Step 7: New file name ─────────────────────────────────────
+            # ── Step 7: New file name (skippable — keeps original name) ────
             step7 = await client.send_message(
                 chat_id,
                 f"Original file name: `{original_name}`\n\n"
-                f"All Fine ✅ \nNow Send me new Your PDF file name(without extension).",
+                f"All Fine ✅ \nNow Send me new Your PDF file name(without extension)."
+                f"\n\n(Send /Skip to keep the original file name)",
             )
             _schedule_delete(step7, 13)
             try:
@@ -293,7 +312,10 @@ def register_wk_handlers(bot: Client):
             _schedule_delete(name_msg, 5)
 
             new_name_raw = (name_msg.text or "").strip()
-            if not new_name_raw:
+            if new_name_raw.lower() == "/skip":
+                base, _ext = os.path.splitext(original_name)
+                new_name_raw = base or "watermarked_output"
+            elif not new_name_raw:
                 new_name_raw = "watermarked_output"
             words = new_name_raw.split()
             if len(words) > FILENAME_MAX_WORDS:
