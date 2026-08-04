@@ -35,8 +35,8 @@ from reportlab.pdfgen import canvas
 
 from vars import REPEAT_EVERY_N_PAGES
 
-TOP_RIGHT = dict(x_frac=0.80, y_frac=0.85, opacity=0.20, rotation=3, anchor="right")
-DOWN_RIGHT = dict(x_frac=0.96, y_frac=0.04, opacity=0.90, rotation=0, anchor="left")
+TOP_RIGHT = dict(x_frac=0.80, y_frac=0.85, opacity=0.30, rotation=45, anchor="center")
+DOWN_RIGHT = dict(x_frac=0.96, y_frac=0.04, opacity=0.80, rotation=0, anchor="right")
 
 
 def _page_is_image_based(page) -> bool:
@@ -161,22 +161,31 @@ def _image_to_page(image_path: str, page_w: float, page_h: float):
 def remove_pdf_pages(input_pdf: str, output_pdf: str, pages_to_remove: set) -> int:
     """
     Writes a new PDF with the given 1-based page numbers removed.
-    Remaining pages shift up naturally (pypdf keeps insertion order), so
-    e.g. removing page 15 makes the old page 16 become the new page 15.
-    Returns the resulting page count.
-    """
-    reader = PdfReader(input_pdf)
-    writer = PdfWriter()
+    Remaining pages shift up naturally, so e.g. removing page 15 makes the
+    old page 16 become the new page 15. Removing the PDF's own last page
+    (the most common case) is fully supported.
 
-    for idx, page in enumerate(reader.pages, start=1):
-        if idx in pages_to_remove:
-            continue
-        writer.add_page(page)
+    Uses strict=False so real-world PDFs with slightly malformed xref/trailer
+    data (very common in large scanned/course PDFs) still parse correctly
+    instead of failing or hanging, and uses pypdf's native bulk page-index
+    clone (PdfWriter.append with an explicit page list) instead of copying
+    pages one-by-one, which is both faster and far less prone to producing a
+    corrupted output file.
+    """
+    reader = PdfReader(input_pdf, strict=False)
+    total = len(reader.pages)
+
+    # 0-based indices to KEEP, in original order.
+    keep_indices = [i for i in range(total) if (i + 1) not in pages_to_remove]
+
+    writer = PdfWriter()
+    if keep_indices:
+        writer.append(reader, pages=keep_indices)
 
     with open(output_pdf, "wb") as f:
         writer.write(f)
 
-    return len(writer.pages)
+    return len(keep_indices)
 
 
 def build_watermarked_pdf(

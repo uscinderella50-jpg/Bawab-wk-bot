@@ -173,14 +173,35 @@ def register_wk_handlers(bot: Client):
                     pages_to_remove = set(ordered)
 
             if pages_to_remove:
+                rm_status = await client.send_message(chat_id, "🧹 Removing selected page(s), please wait...")
                 trimmed_pdf_path = os.path.join(workdir, "trimmed.pdf")
                 try:
-                    total_pages_count = await loop.run_in_executor(
-                        None, remove_pdf_pages, input_pdf_path, trimmed_pdf_path, pages_to_remove
+                    total_pages_count = await asyncio.wait_for(
+                        loop.run_in_executor(
+                            None, remove_pdf_pages, input_pdf_path, trimmed_pdf_path, pages_to_remove
+                        ),
+                        timeout=300,
                     )
                     working_pdf_path = trimmed_pdf_path
+                    try:
+                        await rm_status.edit(f"✅ Removed {len(pages_to_remove)} page(s). Continuing...")
+                    except Exception:
+                        pass
+                except asyncio.TimeoutError:
+                    try:
+                        await rm_status.edit("⚠️ Page removal took too long, continuing with the original PDF instead.")
+                    except Exception:
+                        pass
                 except Exception as e:
-                    await client.send_message(chat_id, f"⚠️ Couldn't remove pages, continuing with original PDF.\n`{str(e)[:200]}`")
+                    try:
+                        await rm_status.edit(f"⚠️ Couldn't remove pages, continuing with original PDF.\n`{str(e)[:200]}`")
+                    except Exception:
+                        pass
+                await asyncio.sleep(1.5)
+                try:
+                    await rm_status.delete()
+                except Exception:
+                    pass
 
             # ── Step 5: Last page image ──────────────────────────────────
             step5 = await client.send_message(chat_id, "Gajjab 🫣\nNow send me last page image (directly send me image)")
