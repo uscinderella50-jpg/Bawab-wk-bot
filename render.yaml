@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: nawaab-wk-bot
+    env: docker
+    plan: starter
+    envVars:
+      - key: API_ID
+        sync: false
+      - key: API_HASH
+        sync: false
+      - key: BOT_TOKEN
+        sync: false
+      - key: OWNER_ID
+        sync: false
+      - key: MONGO_URL
+        sync: false
+      - key: FORCE_SUB_CHAT
+        value: "@TeamCinderella"
+      - key: FORCE_SUB_TITLE
+        value: "Team Cinderella"
+      - key: FORCE_SUB_URL
+        value: "https://t.me/TeamCinderella"
+      - key: PORT
+        value: "8000"
