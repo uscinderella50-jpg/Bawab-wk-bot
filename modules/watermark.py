@@ -36,8 +36,8 @@ from reportlab.pdfgen import canvas
 
 from vars import REPEAT_EVERY_N_PAGES
 
-TOP_RIGHT = dict(x_frac=0.88, y_frac=0.63, opacity=0.11, rotation=0, anchor="right")
-DOWN_RIGHT = dict(x_frac=0.03, y_frac=0.02, opacity=0.95, rotation=0, anchor="left")
+TOP_RIGHT = dict(x_frac=0.92, y_frac=0.87, opacity=0.10, rotation=0, anchor="right")
+DOWN_RIGHT = dict(x_frac=0.03, y_frac=0.02, opacity=1.00, rotation=0, anchor="left")
 
 # page.extract_text() (pypdf) can hang indefinitely on certain messy/edited
 # real-world PDF pages (this is the freeze users hit — no exception, no log,
@@ -118,15 +118,15 @@ def _watermark_layer(page_width: float, page_height: float, configs: list, boost
         anchor = cfg["anchor"]
 
         if boost:
-            opacity = min(1.0, opacity + 0.35)
+            opacity = min(1.0, opacity + 0.11)
 
-        font_size = max(9, int(page_width / 28))
+        font_size = max(9, int(page_width / 35))
         x_pos = page_width * x_frac
         y_pos = page_height * y_frac
 
         c.saveState()
         c.setFillColor(Color(0, 0, 1, alpha=opacity))
-        c.setFont("Helvetica-Bold", font_size)
+        c.setFont("Helvetica", font_size)
         c.translate(x_pos, y_pos)
         if rotation:
             c.rotate(rotation)
