@@ -179,51 +179,6 @@ def _image_to_page(image_path: str, page_w: float, page_h: float):
     return PdfReader(packet).pages[0]
 
 
-def remove_pdf_pages(input_pdf: str, output_pdf: str, pages_to_remove: set) -> int:
-    """
-    Removes the given 1-based page numbers from input_pdf, writes the result
-    to output_pdf, and returns the resulting page count. Optimized for the
-    most common real-world case: dropping the PDF's own last page.
-
-    PRIMARY ENGINE: pikepdf (built on QPDF, a mature C++ PDF library). This
-    is dramatically faster and far more tolerant of malformed/real-world
-    PDFs (shared fonts, huge embedded images, messy xrefs — all common in
-    scanned/course PDFs) than pure-Python page-by-page cloning, which is
-    what was causing large PDFs to hang indefinitely.
-
-    FALLBACK: pypdf (non-strict, bulk page-index clone) — only used if
-    pikepdf can't open the file for some reason, so this never becomes a
-    hard dependency failure.
-    """
-    try:
-        import pikepdf
-
-        with pikepdf.open(input_pdf) as pdf:
-            total = len(pdf.pages)
-            # Delete from highest index to lowest so earlier indices stay valid.
-            for idx in sorted(pages_to_remove, reverse=True):
-                if 1 <= idx <= total:
-                    del pdf.pages[idx - 1]
-            pdf.save(output_pdf)
-            return len(pdf.pages)
-    except Exception as e:
-        print(f"[Watermark] pikepdf page removal failed, falling back to pypdf: {e}")
-
-    # ── Fallback path ──────────────────────────────────────────────────────
-    reader = PdfReader(input_pdf, strict=False)
-    total = len(reader.pages)
-    keep_indices = [i for i in range(total) if (i + 1) not in pages_to_remove]
-
-    writer = PdfWriter()
-    if keep_indices:
-        writer.append(reader, pages=keep_indices)
-
-    with open(output_pdf, "wb") as f:
-        writer.write(f)
-
-    return len(keep_indices)
-
-
 def build_watermarked_pdf(
     input_pdf: str,
     output_pdf: str,

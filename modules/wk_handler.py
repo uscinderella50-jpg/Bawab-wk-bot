@@ -1,20 +1,17 @@
 import asyncio
 import os
-import re
 import shutil
 import uuid
 
 from pyrogram import Client, filters
 from pyrogram.types import Message
-from pypdf import PdfReader
 
 from db import save_user
 from force_sub import is_subscribed, force_sub_markup
 from utils import ProgressTracker
 from vars import TOP_TEXT_MAX_LEN, LINK_TEXT_MAX_LEN, FILENAME_MAX_WORDS
-from watermark import build_watermarked_pdf, remove_pdf_pages
+from watermark import build_watermarked_pdf
 
-REMOVE_PAGES_MAX = 10
 WATERMARK_TIMEOUT = 600  # seconds — hard ceiling so the final build step can never freeze forever
 
 PROGRESS_STEPS = [
@@ -101,17 +98,6 @@ def register_wk_handlers(bot: Client):
                 return
             await dl_status.delete()
 
-            try:
-                total_pages_count = await loop.run_in_executor(
-                    None, lambda: len(PdfReader(input_pdf_path).pages)
-                )
-            except Exception:
-                total_pages_count = 0
-
-            # working_pdf_path is what actually feeds the watermark engine —
-            # it stays equal to input_pdf_path unless the user removes pages.
-            working_pdf_path = input_pdf_path
-
             # ── Step 2: Type-1 watermark text (every page) ──────────────
             top_text = await _ask_text(
                 bot, chat_id, user_id,
@@ -147,71 +133,6 @@ def register_wk_handlers(bot: Client):
             elif not (link_url.startswith("http://") or link_url.startswith("https://")):
                 await client.send_message(chat_id, "❌ Invalid link. It must start with http or https. Send /wk again.")
                 return
-
-            # ── Extra step: optional page removal ────────────────────────
-            rm_prompt = await client.send_message(
-                chat_id,
-                "Amazing 🤩!\n"
-                f"Total pages in this PDF: {total_pages_count} !\n"
-                "Do you wanna to remove any kind of pages of this PDF so send me "
-                "number(only with connect & for multiple numbers) OR you Can /Skip this Step!",
-            )
-            _schedule_delete(rm_prompt, 13)
-            try:
-                rm_msg: Message = await bot.listen(
-                    chat_id, filters=filters.text & filters.user(user_id), timeout=300
-                )
-            except asyncio.TimeoutError:
-                await client.send_message(chat_id, "⏰ Timeout! Please send /wk again.")
-                return
-            _schedule_delete(rm_msg, 5)
-
-            rm_text = (rm_msg.text or "").strip()
-            pages_to_remove = set()
-
-            if rm_text.lower() != "/skip":
-                # Only digits joined by "&" are valid — anything else
-                # (including letters like "AbCD") is silently treated as /Skip.
-                if re.fullmatch(r"\d+(&\d+)*", rm_text):
-                    ordered = []
-                    for n_str in rm_text.split("&"):
-                        n = int(n_str)
-                        if 1 <= n <= total_pages_count and n not in ordered:
-                            ordered.append(n)
-                    if len(ordered) > REMOVE_PAGES_MAX:
-                        ordered = ordered[:REMOVE_PAGES_MAX]
-                    pages_to_remove = set(ordered)
-
-            if pages_to_remove:
-                rm_status = await client.send_message(chat_id, "🧹 Removing selected page(s), please wait...")
-                trimmed_pdf_path = os.path.join(workdir, "trimmed.pdf")
-                try:
-                    total_pages_count = await asyncio.wait_for(
-                        loop.run_in_executor(
-                            None, remove_pdf_pages, input_pdf_path, trimmed_pdf_path, pages_to_remove
-                        ),
-                        timeout=300,
-                    )
-                    working_pdf_path = trimmed_pdf_path
-                    try:
-                        await rm_status.edit(f"✅ Removed {len(pages_to_remove)} page(s). Continuing...")
-                    except Exception:
-                        pass
-                except asyncio.TimeoutError:
-                    try:
-                        await rm_status.edit("⚠️ Page removal took too long, continuing with the original PDF instead.")
-                    except Exception:
-                        pass
-                except Exception as e:
-                    try:
-                        await rm_status.edit(f"⚠️ Couldn't remove pages, continuing with original PDF.\n`{str(e)[:200]}`")
-                    except Exception:
-                        pass
-                await asyncio.sleep(1.5)
-                try:
-                    await rm_status.delete()
-                except Exception:
-                    pass
 
             # ── Step 5: Last page image (skippable) ────────────────────────
             step5 = await client.send_message(
@@ -260,7 +181,7 @@ def register_wk_handlers(bot: Client):
             wm_task = loop.run_in_executor(
                 None,
                 build_watermarked_pdf,
-                working_pdf_path,
+                input_pdf_path,
                 output_pdf_path,
                 top_text,
                 link_text,
