@@ -15,11 +15,11 @@ from watermark import build_watermarked_pdf
 WATERMARK_TIMEOUT = 600  # seconds — hard ceiling so the final build step can never freeze forever
 
 PROGRESS_STEPS = [
-    "Fine,Im attempting thise wait 😁",
-    "Wait, I'm working on it 🔍",
+    "Wait,Im attempting this wait...😁",
+    "that's Fine, I'm working on it 🔍",
     "Alrights, all Good happings 🧐",
-    "Working on Watermark 🌊",
-    "All Done ✅ wait lil bit.",
+    "Now Working on Watermark...🌊",
+    "All Done ✅ Just Sent to you 📤.",
 ]
 
 DOWNLOADS_DIR = "downloads"
@@ -86,12 +86,12 @@ def register_wk_handlers(bot: Client):
             original_name = pdf_msg.document.file_name
             input_pdf_path = os.path.join(workdir, "input.pdf")
 
-            dl_status = await client.send_message(chat_id, "⬇️ Downloading your PDF...")
+            dl_status = await client.send_message(chat_id, "⬇️ Downloading your PDF...🤭")
             try:
                 await bot.download_media(
                     pdf_msg,
                     file_name=input_pdf_path,
-                    progress=ProgressTracker(dl_status, "⬇️ Downloading your PDF...").__call__,
+                    progress=ProgressTracker(dl_status, "⬇️ Downloading your PDF...🤭").__call__,
                 )
             except Exception as e:
                 await dl_status.edit(f"❌ Download failed:\n`{str(e)[:300]}`")
@@ -101,7 +101,7 @@ def register_wk_handlers(bot: Client):
             # ── Step 2: Type-1 watermark text (every page) ──────────────
             top_text = await _ask_text(
                 bot, chat_id, user_id,
-                "Alrights 😊 \nNow Send Watermark text(who carries PDF's Every Pages",
+                "Alrights 😊 \nNow Send me Main Watermark text(who carries PDF's Every Pages)",
             )
             if top_text.strip().lower() == "/skip":
                 await client.send_message(chat_id, "❌ This field is required and can't be skipped. Send /wk again.")
@@ -113,7 +113,7 @@ def register_wk_handlers(bot: Client):
             # ── Step 3: Type-2/3 redirect text (skippable) ────────────────
             link_text = await _ask_text(
                 bot, chat_id, user_id,
-                "Fantastic 😍 \nNow Send Your redirected Text(who carries PDF's Every 25-50..th Pages"
+                "Fantastic 😍 \nNow Send Your Clickable Text(who carries PDF's Every 15th Pages)"
                 "\n\n(Send /Skip to skip this — no repeating link watermark will be added)",
             )
             if link_text.strip().lower() == "/skip":
@@ -125,7 +125,7 @@ def register_wk_handlers(bot: Client):
             # ── Step 4: Redirect URL (skippable) ───────────────────────────
             link_url = await _ask_text(
                 bot, chat_id, user_id,
-                "Alrights 😊 \nNow send this Text Redirect Link(must be starts with http or https) "
+                "Alrights 😊 \nNow send this Text Redirect URL(must be starts with http or https) "
                 "\n\n(Send /Skip to skip this — no clickable link will be added)",
             )
             if link_url.strip().lower() == "/skip":
@@ -161,7 +161,7 @@ def register_wk_handlers(bot: Client):
                 # ── Step 6: Yes / Skip on last page watermark (only asked if an image was given) ──
                 step6 = await client.send_message(
                     chat_id,
-                    "Fine 😁 \nDo you want to use your redirected txt & url on this page So send /Yes Or you can /Skip it anyways",
+                    "Fine 😁 \nDo you want to use your Clickable Link on this Your Last page too? So send /Yes Or you can /Skip it anyways",
                 )
                 _schedule_delete(step6, 13)
                 try:
@@ -229,7 +229,7 @@ def register_wk_handlers(bot: Client):
             # ── Step 7: New file name (skippable — keeps original name) ────
             step7 = await client.send_message(
                 chat_id,
-                f"Original file name: `{original_name}`\n\n"
+                f"Original file name:\n\n `{original_name}`\n\n\n"
                 f"All Fine ✅ \nNow Send me new Your PDF file name(without extension)."
                 f"\n\n(Send /Skip to keep the original file name)",
             )
@@ -256,14 +256,14 @@ def register_wk_handlers(bot: Client):
             final_filename = f"{safe_name}.pdf"
 
             # ── Send final watermarked PDF (this message is NEVER deleted) ─
-            up_status = await client.send_message(chat_id, "📤 Uploading your watermarked PDF...")
+            up_status = await client.send_message(chat_id, "📤 Uploading your watermarked PDF...😘")
             try:
                 await client.send_document(
                     chat_id,
                     document=output_pdf_path,
                     file_name=final_filename,
                     caption=f"✅ **{final_filename}**",
-                    progress=ProgressTracker(up_status, "📤 Uploading your watermarked PDF...").__call__,
+                    progress=ProgressTracker(up_status, "📤 Uploading your watermarked PDF...😘").__call__,
                 )
             except Exception as e:
                 await up_status.edit(f"❌ Upload failed:\n`{str(e)[:300]}`")
@@ -272,7 +272,7 @@ def register_wk_handlers(bot: Client):
 
             await client.send_message(
                 chat_id,
-                "Thank you For Using me🥰😘\nWanna Need to use me again \nSo just send /Wk to me again.",
+                "**Thank you For Using me🥰😘**\n\nWanna Need to use me again?\nSo just send /Wk to me again.\n\nim Made By: @SmartBoy_ApnaMS 🌺.",
             )
 
         finally:
