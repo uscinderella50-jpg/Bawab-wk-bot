@@ -28,11 +28,11 @@ HARD_CEILING = 2700          # 45 min — absolute max wait no matter what
 PROGRESS_EDIT_INTERVAL = 4   # seconds between status-message edits
 
 PROGRESS_STEPS = [
-    "Wait,Im attempting this wait...😁",
-    "that's Fine, I'm working on it 🔍",
-    "Alrights, all Good happings 🧐",
-    "Now Working on Watermark...🌊",
-    "All Done ✅ Just Sent to you 📤.",
+    "**Wait,Im attempting on this wait...😁.**",
+    "**that's All Fine, I'm working on it 🔍.**",
+    "**Alrights, all Good happings 🧐.**",
+    "**Now im Finishing it...🌊.**",
+    "**All Done ✅ Just Sent to you 📤.**",
 ]
 
 DOWNLOADS_DIR = "downloads"
@@ -99,12 +99,12 @@ def register_wk_handlers(bot: Client):
             original_name = pdf_msg.document.file_name
             input_pdf_path = os.path.join(workdir, "input.pdf")
 
-            dl_status = await client.send_message(chat_id, "⬇️ Downloading your PDF...🤭")
+            dl_status = await client.send_message(chat_id, "⬇️ Downloading your PDF...🤭\n\n**Downloading Speed:** 45 MB/s")
             try:
                 await bot.download_media(
                     pdf_msg,
                     file_name=input_pdf_path,
-                    progress=ProgressTracker(dl_status, "⬇️ Downloading your PDF...🤭").__call__,
+                    progress=ProgressTracker(dl_status, "⬇️ Downloading your PDF...🤭\n\n**Downloading Speed:** 45 MB/s").__call__,
                 )
             except Exception as e:
                 await dl_status.edit(f"❌ Download failed:\n`{str(e)[:300]}`")
@@ -127,7 +127,7 @@ def register_wk_handlers(bot: Client):
             link_text = await _ask_text(
                 bot, chat_id, user_id,
                 "Fantastic 😍 \nNow Send Your Clickable Text(who carries PDF's Every 15th Pages)"
-                "\n\n(Send /Skip to skip this — no repeating link watermark will be added)",
+                "\n\n(Send /Skip to skip this — no Clickable link watermark will be added)",
             )
             if link_text.strip().lower() == "/skip":
                 link_text = None
@@ -138,7 +138,7 @@ def register_wk_handlers(bot: Client):
             # ── Step 4: Redirect URL (skippable) ───────────────────────────
             link_url = await _ask_text(
                 bot, chat_id, user_id,
-                "Alrights 😊 \nNow send this Text Redirect URL(must be starts with http or https) "
+                "Alrights 😊 \nNow send me Redirect URL(must be starts with http or https) "
                 "\n\n(Send /Skip to skip this — no clickable link will be added)",
             )
             if link_url.strip().lower() == "/skip":
@@ -284,7 +284,7 @@ def register_wk_handlers(bot: Client):
             # ── Step 7: New file name (skippable — keeps original name) ────
             step7 = await client.send_message(
                 chat_id,
-                f"Original file name:\n\n `{original_name}`\n\n\n"
+                f"Original file name:\n\n `{original_name}`\n\n"
                 f"All Fine ✅ \nNow Send me new Your PDF file name(without extension)."
                 f"\n\n(Send /Skip to keep the original file name)",
             )
@@ -311,14 +311,14 @@ def register_wk_handlers(bot: Client):
             final_filename = f"{safe_name}.pdf"
 
             # ── Send final watermarked PDF (this message is NEVER deleted) ─
-            up_status = await client.send_message(chat_id, "📤 Uploading your watermarked PDF...😘")
+            up_status = await client.send_message(chat_id, "📤 Uploading your watermarked PDF...😘\n\n**Downloading Speed:** 50 MB/s")
             try:
                 await client.send_document(
                     chat_id,
                     document=output_pdf_path,
                     file_name=final_filename,
                     caption=f"✅ **{final_filename}**",
-                    progress=ProgressTracker(up_status, "📤 Uploading your watermarked PDF...😘").__call__,
+                    progress=ProgressTracker(up_status, "📤 Uploading your watermarked PDF...😘\n\n**Downloading Speed:** 50 MB/s").__call__,
                 )
             except Exception as e:
                 await up_status.edit(f"❌ Upload failed:\n`{str(e)[:300]}`")
@@ -327,7 +327,7 @@ def register_wk_handlers(bot: Client):
 
             await client.send_message(
                 chat_id,
-                "**Thank you For Using me🥰😘**\n\nWanna Need to use me again?\nSo just send /Wk to me again.\n\nim Made By: @SmartBoy_ApnaMS 🌺.",
+                "**Thank you For Using me🥰😘**\n\nWanna Need to use me again?\nSo just send /Wk to me again.\n\n**im Made By:** @SmartBoy_ApnaMS ❤️.",
             )
 
         finally:
