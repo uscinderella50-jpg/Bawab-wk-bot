@@ -87,10 +87,11 @@ from vars import REPEAT_EVERY_N_PAGES
 # Visible-corner watermark configs. x_frac/y_frac are fractions of the page
 # as the reader actually SEES it (i.e. already accounting for /Rotate) —
 # _watermark_layer() takes care of mapping these into raw MediaBox space.
-TOP_RIGHT = DOWN_RIGHTS
+
 DOWN_RIGHTS = dict(x_frac=0.97, y_frac=0.02, opacity=0.20, rotation=0, anchor="right")
-DOWN_RIGHT = DOWN_LEFT
+TOP_RIGHT = DOWN_RIGHTS
 DOWN_LEFT = dict(x_frac=0.03, y_frac=0.02, opacity=1.00, rotation=0, anchor="left")
+DOWN_RIGHT = DOWN_LEFT
 
 
 def _log(msg: str) -> None:
