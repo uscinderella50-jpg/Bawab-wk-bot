@@ -12,7 +12,20 @@ from utils import ProgressTracker
 from vars import TOP_TEXT_MAX_LEN, LINK_TEXT_MAX_LEN, FILENAME_MAX_WORDS
 from watermark import build_watermarked_pdf
 
-WATERMARK_TIMEOUT = 600  # seconds — hard ceiling so the final build step can never freeze forever
+# FIX: the old code used a flat 600s ("blind") timeout that had zero idea how
+# the job was actually progressing — on a big/scanned PDF it would either cut
+# off a job that was genuinely still working (wasting the whole computation),
+# or, if the job's build_watermarked_pdf() thread ever truly hung, it would
+# sit there for the full 600s with the progress message frozen on step 1,
+# which is exactly the "stuck" behaviour that was reported. We now get REAL
+# per-page progress from watermark.py and use it two ways:
+#   1. Show the user actual "page X/Y" progress so it never *looks* stuck
+#      even while it's genuinely still working on a big file.
+#   2. Only abort if progress has genuinely STALLED (no page advanced) for
+#      STALL_TIMEOUT seconds, with an absolute HARD_CEILING as a last resort.
+STALL_TIMEOUT = 150          # seconds with zero page progress before we call it "stuck"
+HARD_CEILING = 2700          # 45 min — absolute max wait no matter what
+PROGRESS_EDIT_INTERVAL = 4   # seconds between status-message edits
 
 PROGRESS_STEPS = [
     "Wait,Im attempting this wait...😁",
@@ -174,9 +187,20 @@ def register_wk_handlers(bot: Client):
                 _schedule_delete(choice_msg, 5)
                 apply_last_wm = (choice_msg.text or "").strip().lower() == "/yes"
 
-            # ── Processing: apply watermarks with rotating progress text ──
+            # ── Processing: apply watermarks with REAL page-by-page progress ──
             progress_msg = await client.send_message(chat_id, PROGRESS_STEPS[0])
             output_pdf_path = os.path.join(workdir, "output.pdf")
+
+            # Simple mutable holder the worker thread writes into and the
+            # asyncio loop below polls — plain int/dict writes are atomic
+            # enough under the GIL for this "latest value wins" use case.
+            progress_state = {"current": 0, "total": 0}
+
+            def _on_progress(current: int, total: int, _state=progress_state):
+                _state["current"] = current
+                _state["total"] = total
+
+            print(f"[WkHandler] Launching watermark job for user {user_id}, file={original_name!r}")
 
             wm_task = loop.run_in_executor(
                 None,
@@ -188,31 +212,62 @@ def register_wk_handlers(bot: Client):
                 link_url,
                 last_img_path,
                 apply_last_wm,
+                _on_progress,
             )
 
-            step_i = 1
-            deadline = loop.time() + WATERMARK_TIMEOUT
+            job_start = loop.time()
+            last_progress_value = -1
+            last_progress_change_at = job_start
+            last_sent_text = None
+
             while not wm_task.done():
-                if loop.time() >= deadline:
+                now = loop.time()
+                cur, total = progress_state["current"], progress_state["total"]
+
+                if cur != last_progress_value:
+                    last_progress_value = cur
+                    last_progress_change_at = now
+
+                stalled_for = now - last_progress_change_at
+                elapsed = now - job_start
+
+                if elapsed >= HARD_CEILING or stalled_for >= STALL_TIMEOUT:
+                    print(
+                        f"[WkHandler] Aborting job for user {user_id}: "
+                        f"elapsed={elapsed:.0f}s stalled_for={stalled_for:.0f}s "
+                        f"progress={cur}/{total}"
+                    )
                     wm_task.cancel()
                     try:
                         await progress_msg.edit(
-                            "❌ Watermarking took too long and was stopped. Please send /wk again."
+                            "❌ Watermarking got stuck / took too long and was stopped.\n"
+                            "Please send /wk again — if this keeps happening with the same "
+                            "file, try a smaller/simpler PDF."
                         )
                     except Exception:
                         pass
                     return
-                await asyncio.sleep(4.5)
-                if step_i < len(PROGRESS_STEPS) - 1:
+
+                if total:
+                    pct = int((cur / total) * 100)
+                    step_idx = min(int(pct / 25), len(PROGRESS_STEPS) - 2)
+                    text = f"{PROGRESS_STEPS[step_idx]}\n\n📄 Page {cur}/{total} ({pct}%)"
+                else:
+                    text = PROGRESS_STEPS[0]
+
+                if text != last_sent_text:
                     try:
-                        await progress_msg.edit(PROGRESS_STEPS[step_i])
+                        await progress_msg.edit(text)
+                        last_sent_text = text
                     except Exception:
                         pass
-                    step_i += 1
+
+                await asyncio.sleep(PROGRESS_EDIT_INTERVAL)
 
             try:
                 await wm_task
             except Exception as e:
+                print(f"[WkHandler] Watermarking failed for user {user_id}: {e}")
                 await progress_msg.edit(f"❌ Watermarking failed:\n`{str(e)[:300]}`")
                 return
 
