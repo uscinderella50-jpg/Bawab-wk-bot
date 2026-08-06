@@ -7,6 +7,7 @@ pyrofork
 pyromod==1.5
 TgCrypto==1.2.5
 PySocks==1.7.1
+cryptography>=3.1 
 
 motor
 pymongo
