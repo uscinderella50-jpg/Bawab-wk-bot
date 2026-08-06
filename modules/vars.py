@@ -24,4 +24,4 @@ PORT = int(os.environ.get("PORT", "8000"))
 TOP_TEXT_MAX_LEN = 50          # Type-1 watermark text max length
 LINK_TEXT_MAX_LEN = 20         # Type-2/3 redirect text max length
 FILENAME_MAX_WORDS = 200       # Max words allowed in final file name
-REPEAT_EVERY_N_PAGES = 25      # Type-2 watermark repeats every Nth page
+REPEAT_EVERY_N_PAGES = 15      # Type-2 watermark repeats every Nth page
